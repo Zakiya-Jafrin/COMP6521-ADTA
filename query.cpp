@@ -13,7 +13,7 @@ const int tuple_length = 250; // size of one tuple in bytes, according to lab as
 const int block_size = 15;    // number of tuples that can fit in one block, according to lab assignment specifications
 
 /* parameters: input is the fstream for the file; memory is the allowed memory in MB
- * returns: the number of sublists we have to use due to memory limitions for the given memory
+ * returns: the number of sublists we have to use due to memory limitations for the given memory
  * algorithm (phase 1):
  *   calculate how many blocks can fit into main memory at once
  *   for each such sublist, read it, sort in place by CID field, replace sublist in file
@@ -74,7 +74,6 @@ class Sublist {
             double sum = 0;
             while (!this->exhausted) {
                 if (stoi(tuples.front().substr(18,9)) == cid) {
-                    //cout << fixed << setprecision(2) << stod(tuples.front().substr(241,9)) << endl;
                     sum += stod(tuples.front().substr(241,9));
                     tuples.pop();
                 }
@@ -132,7 +131,7 @@ void phase2(fstream& input, int memory, int count) {
     }
 
     while (!buffer.empty()) {
-        // retreive CID with least value amongst the first tuple of each sublist
+        // retrieve CID with least value amongst the first tuple of each sublist
         int cid = numeric_limits<int>::max();
         for (auto& it : buffer) {
             cid = min(cid, stoi(it->tuples.front().substr(18,9)));
