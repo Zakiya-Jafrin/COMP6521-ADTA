@@ -1,3 +1,4 @@
+#include "sublist.h"
 #include <iostream>
 #include <numeric>
 #include <iomanip>
@@ -55,63 +56,10 @@ int phase1(fstream& input, int memory) {
     return count;
 }
 
-// class for managing a single sublist
-class Sublist {
-    public:
-        queue<string> tuples; // queue of tuples read from file that are currently in buffer for this particular sublist
-        bool exhausted;       // true iff sublist is exhausted
-
-        //constructor: initialize members and read one block
-        Sublist(int position, int max_blocks, fstream& input) : input(input) {
-            this->position = position;
-            this->blocks_read = 0;
-            this->exhausted = false;
-            this->max_blocks = max_blocks;
-            this->read_block();
-        }
-        // aggregate all tuples in this sublist that match with the field CID; reload from file as necessary if the tuples buffer for this sublist becomes empty
-        double aggregate(int cid) {
-            double sum = 0;
-            while (!this->exhausted) {
-                if (stoi(tuples.front().substr(18,9)) == cid) {
-                    sum += stod(tuples.front().substr(241,9));
-                    tuples.pop();
-                }
-                else
-                    break;
-                if (tuples.empty())
-                    this->read_block();
-            }
-            return sum;
-        }
-    private:
-        int blocks_read; // number of blocks already read from this sublist
-        int position;    // next position in text file to read from
-        int max_blocks;  // maximum number of blocks that can be read from a sublist
-        fstream& input;  // reference to input stream
-
-        // read next block and put it in buffer (return true); if no more blocks left then turn on exhausted flag and return false
-        void read_block() {
-            input.seekg(position);
-            string line;
-            for (int i = 0; i < block_size && getline(input, line); ++i) {
-                tuples.push(line);
-            }
-
-            // update blocks_read and next position to read from; if max amount read then turn on exhausted flag
-            ++blocks_read;
-            position += (tuple_length + 1) * block_size;
-            if (input.eof() || blocks_read == max_blocks) {
-                input.clear();
-                exhausted = true;
-            }
-        }
-};
-
 /* parameters: input is the fstream for the file; memory is the allowed memory in MB; count is the number of sublists in the file
  * algorithm (phase 2):
  *   load first block of each sublist into main memory buffer  
- *   iterate to find next highest CID key amongst the first tuple in each sublist buffer
+ *   iterate to find next lowest CID key amongst the first tuple in each sublist buffer
  *   compute the aggregate for each CID by incrementing its "sum"
  *   if buffer becomes empty, replace it with the next block from the same sublist; if sublist becomes exhausted then remove its reference altogether
  *   output aggregate for each CID one by one, starting from the lowest value CID
@@ -126,10 +74,13 @@ void phase2(fstream& input, int memory, int count) {
     // initialize buffer; using std::list instead of std::vector since we want to dynamically remove exhausted buffers from list in constant time, while iterating
     list<Sublist*> buffer; 
     for (int i = 0; i < count; ++i) {
-        Sublist* temp = new Sublist(i * (tuple_length + 1) * sublist_size_tuples, sublist_size, input);
+        Sublist* temp = new Sublist(i * (tuple_length + 1) * sublist_size_tuples, sublist_size, input, block_size, tuple_length);
         buffer.push_back(temp);
     }
 
+    // keep track of the ten most costliest clients
+    vector<pair<int,double>> costliest (10);
+    
     while (!buffer.empty()) {
         // retrieve CID with least value amongst the first tuple of each sublist
         int cid = numeric_limits<int>::max();
@@ -148,8 +99,24 @@ void phase2(fstream& input, int memory, int count) {
             else
                 ++it;
         }
+
         // write aggregate of current CID's Amount-Paid to stdout
-        cout << to_string(cid) << " " << fixed << setprecision(2) << sum << endl;
+        //cout << to_string(cid) << " " << fixed << setprecision(2) << sum << endl;
+
+        // update top 10 costliest clients
+        pair<int,double> temp (cid, sum);
+        if (costliest.size() < 10)
+            costliest.push_back(temp);
+        else if (costliest[0].second < temp.second) {
+            costliest[0] = temp;
+            sort(costliest.begin(), costliest.end(), [](const pair<int,double>& left, const pair<int,double>& right) {return left.second < right.second;} ); 
+        }
+    }
+    cout << "Top ten costliest clients:" << endl;
+    for (int i = costliest.size() - 1; i >= 0; --i) {
+        cout << costliest[i].first << ", ";
+        cout.width(30);
+        cout << fixed << setprecision(2) << right << costliest[i].second << endl;
     }
 }
 
