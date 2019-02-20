@@ -1,4 +1,5 @@
 #include "sublist.h"
+#include <iostream>
 using namespace std;
 
 //constructor: initialize members and read the first block
@@ -15,15 +16,21 @@ Sublist::Sublist(int position, int max_blocks, fstream& input, int block_size, i
 // aggregate all tuples in this sublist that match with the field CID; reload from file as necessary if the tuples buffer for this sublist becomes empty
 double Sublist::aggregate(int cid) {
     double sum = 0;
-    while (!(this->exhausted && this->tuples.empty())) {
+    while (true) {
+        if (tuples.empty()) { 
+            if (!exhausted)
+                this->read_block();
+            else
+                break;
+        }
+        if (tuples.empty())
+            break;
         if (stoi(tuples.front().substr(18,9)) == cid) {
             sum += stod(tuples.front().substr(241,9));
             tuples.pop();
         }
         else
             break;
-        if (tuples.empty())
-            this->read_block();
     }
     return sum;
 }
