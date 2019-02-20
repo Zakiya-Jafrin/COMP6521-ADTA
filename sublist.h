@@ -9,7 +9,7 @@ class Sublist {
         Sublist(int position, int max_blocks, std::fstream& input, int block_size, int tuple_length);
 
         std::queue<std::string> tuples; // queue of tuples read from file that are currently in buffer for this particular sublist
-        bool exhausted;                 // true iff sublist is exhausted
+        bool exhausted;                 // true iff sublist is exhausted (no more blocks can be read from the file for this sublist since it has reached its capacity)
 
         // aggregate all tuples in this sublist that match with the field CID; reload from file as necessary if the tuples buffer for this sublist becomes empty
         double aggregate(int cid);
