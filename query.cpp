@@ -94,7 +94,7 @@ void phase2(fstream& input, int memory, int count) {
             sum += (*it)->aggregate(cid);
 
             // if sublist is now exhausted, then remove it from buffer
-            if ((*it)->exhausted)
+            if ((*it)->exhausted && (*it)->tuples.empty())
                 it = buffer.erase(it);
             else
                 ++it;

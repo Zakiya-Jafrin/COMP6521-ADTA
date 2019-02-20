@@ -15,7 +15,7 @@ Sublist::Sublist(int position, int max_blocks, fstream& input, int block_size, i
 // aggregate all tuples in this sublist that match with the field CID; reload from file as necessary if the tuples buffer for this sublist becomes empty
 double Sublist::aggregate(int cid) {
     double sum = 0;
-    while (!this->exhausted) {
+    while (!(this->exhausted && this->tuples.empty())) {
         if (stoi(tuples.front().substr(18,9)) == cid) {
             sum += stod(tuples.front().substr(241,9));
             tuples.pop();
