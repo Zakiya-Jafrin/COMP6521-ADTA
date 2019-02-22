@@ -19,10 +19,11 @@ const int block_size = 15;    // number of tuples that can fit in one block, acc
  *   calculate how many blocks can fit into main memory at once
  *   for each such sublist, read it, sort in place by CID field, replace sublist in file
  */
-int phase1(fstream& input, int memory) {
+int phase1(fstream& input, int memory, bool output) {
     int sublist_size = memory * pow(2, 20) / (tuple_length * block_size);        // calculate how many blocks can fit into memory (in terms of number of blocks)
     int sublist_size_tuples = sublist_size * block_size;                         // calculate how many tuples can fit into memory (in terms of number of tuples)
-    cout << "number of tuples that can fit at a time in memory: " << sublist_size_tuples << endl;
+    if (output)
+        cout << "number of tuples that can fit at a time in memory: " << sublist_size_tuples << endl;
 
     bool end = input.eof(); // keep track of when we reach end of file
 
@@ -37,7 +38,8 @@ int phase1(fstream& input, int memory) {
             chunk.push_back(line);
 
         // output iteration number, and total memory consumption of the vector (MB)
-        cout << "iteration: " << (count+1) << ", total memory used (MB): " << chunk[0].size() * chunk.size() / pow(2,20)  << " MB" << endl;
+        if (output)
+            cout << "iteration: " << (count+1) << ", total memory used (MB): " << chunk[0].size() * chunk.size() / pow(2,20)  << " MB" << endl;
 
         // sort in-place by CID field; c++'s sort() uses in-place quicksort
         // other option is using priority_queue so it stores it in a min-heap data structure
@@ -60,11 +62,11 @@ int phase1(fstream& input, int memory) {
  * algorithm (phase 2):
  *   load first block of each sublist into main memory buffer  
  *   iterate to find next lowest CID key amongst the first tuple in each sublist buffer
- *   compute the aggregate for each CID by incrementing its "sum"
+ *   compute sorted order and the aggregate for each CID by incrementing its "sum"
  *   if buffer becomes empty, replace it with the next block from the same sublist; if sublist becomes exhausted then remove its reference altogether
  *   output aggregate for each CID one by one, starting from the lowest value CID
  */
-void phase2(fstream& input, int memory, int count) {
+void phase2(fstream& input, int memory, int count, bool output) {
     // seek to start of file
     input.seekg(0);
 
@@ -74,7 +76,7 @@ void phase2(fstream& input, int memory, int count) {
     // initialize buffer; using std::list instead of std::vector since we want to dynamically remove exhausted buffers from list in constant time, while iterating
     list<Sublist*> buffer; 
     for (int i = 0; i < count; ++i) {
-        Sublist* temp = new Sublist(i * (tuple_length + 1) * sublist_size_tuples, sublist_size, input, block_size, tuple_length);
+        Sublist* temp = new Sublist(i * (tuple_length + 1) * sublist_size_tuples, sublist_size, input, output);
         buffer.push_back(temp);
     }
 
@@ -112,18 +114,20 @@ void phase2(fstream& input, int memory, int count) {
             sort(costliest.begin(), costliest.end(), [](const pair<int,double>& left, const pair<int,double>& right) {return left.second < right.second;} ); 
         }
     }
-    cout << "Top ten costliest clients:" << endl;
-    for (int i = costliest.size() - 1; i >= 0; --i) {
-        cout << costliest[i].first << ", ";
-        cout.width(30);
-        cout << fixed << setprecision(2) << right << costliest[i].second << endl;
+    if (output) {
+        cout << "Top ten costliest clients:" << endl;
+        for (int i = costliest.size() - 1; i >= 0; --i) {
+            cout << costliest[i].first << ", ";
+            cout.width(30);
+            cout << fixed << setprecision(2) << right << costliest[i].second << endl;
+        }
     }
 }
 
 int main(int argc, char* argv[]) {
     // handle input filename and memory through arguments
-    if (argc != 3) {
-        cerr << "ERROR: usage: query.cpp <input_file> <memory restriction in megabytes>" << endl;
+    if (argc != 4) {
+        cerr << "ERROR: usage: query.cpp <input_file> <memory restriction in megabytes> <type of output>" << endl;
         return 1;
     }
     fstream input;
@@ -133,12 +137,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     int memory = atoi(argv[2]);
+    bool output = (string) argv[3] == "normal";
 
     // do phase 1 and write back to file
-    int count = phase1(input, memory);
+    int count = phase1(input, memory, output);
 
     // do phase 2 and write to stdout
-    phase2(input, memory, count);
+    phase2(input, memory, count, output);
 
     // close input file and return
     input.close();

@@ -3,13 +3,12 @@
 using namespace std;
 
 //constructor: initialize members and read the first block
-Sublist::Sublist(int position, int max_blocks, fstream& input, int block_size, int tuple_length) : input(input) {
+Sublist::Sublist(int position, int max_blocks, fstream& input, bool output) : input(input) {
     this->position = position;
     this->blocks_read = 0;
     this->exhausted = false;
     this->max_blocks = max_blocks;
-    this->block_size = block_size;
-    this->tuple_length = tuple_length;
+    this->output = output;
     this->read_block();
 }
 
@@ -26,6 +25,8 @@ double Sublist::aggregate(int cid) {
         if (tuples.empty())
             break;
         if (stoi(tuples.front().substr(18,9)) == cid) {
+            if (!output)
+                cout << tuples.front() << endl;
             sum += stod(tuples.front().substr(241,9));
             tuples.pop();
         }
